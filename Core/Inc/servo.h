@@ -36,6 +36,7 @@
 typedef struct servo_pos_struct
     {
 	u32 need_pos;
+	u8 source;
     } Servo_pos_str;
 
 typedef struct servo_struct

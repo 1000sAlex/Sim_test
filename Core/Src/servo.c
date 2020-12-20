@@ -13,6 +13,7 @@
 Servo_str Servo;
 Servo_pos_str servo_pos;
 extern TIM_HandleTypeDef htim4;
+extern core_str Core;
 
 #define T 100
 
@@ -117,6 +118,10 @@ void Servo_work(Servo_str *serv)
 #else
 	Uart_send("servo ready\n", sizeof("servo ready\n"));
 #endif
+	if (serv->pos.source == COM_FROM_CORE)
+	    {
+	    vTaskResume(Core.core_Handle);
+	    }
 	}
     }
 

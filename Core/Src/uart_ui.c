@@ -25,7 +25,7 @@ static core_com_str core_com;
 
 u8 uart_rx_buf[128];
 u16 rx_count = 0;
-u8 hello[] = "hello\n";
+u8 hello[] = "hello\nPrint h! to help\n";
 
 Uart_tx_str Uart_tx;
 void Uart_tx_task(void *args);
@@ -104,6 +104,7 @@ void uart_pars(u8 *data, u16 len)
     u16 l = 0; //хранит правый конец текущей команды
     u16 local_l = 0;
     u16 local_end = 0;
+    u8 n_attr = 0;
     while (l < len) //идем до конца принятого буфера
 	{
 	if (data[l] == '!') //идем вправо до '!'
@@ -117,17 +118,19 @@ void uart_pars(u8 *data, u16 len)
 		    rx_val = rx_val + (order * (data[local_l] - '0'));
 		    order = order * 10;
 		    }
-		else if (data[local_l] == 'x')
+		else if ((data[local_l] == 'x') || (data[local_l] == 'X'))
 		    {
 		    stepper_pos.need_pos = rx_val;
+		    stepper_pos.source = COM_FROM_ISR;
 		    static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		    xQueueSendFromISR(Stepper.queue, &stepper_pos,
 			    &xHigherPriorityTaskWoken);
 		    break;
 		    }
-		else if (data[local_l] == 'y')
+		else if ((data[local_l] == 'y') || (data[local_l] == 'Y'))
 		    {
 		    servo_pos.need_pos = rx_val;
+		    servo_pos.source = COM_FROM_ISR;
 		    static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		    xQueueSendFromISR(Servo.queue, &servo_pos,
 			    &xHigherPriorityTaskWoken);
@@ -135,19 +138,44 @@ void uart_pars(u8 *data, u16 len)
 		    }
 		else if ((data[local_l] == ';') || data[local_l] == '=')
 		    {
-		    core_com.atr_buf[core_com.n_atr++] = rx_val;
+		    core_com.atr_buf[n_attr++] = rx_val;
 		    rx_val = 0;
 		    order = 1;
 		    }
-		else if (data[local_l] == 'm')
+		else if ((data[local_l] == 'm') || (data[local_l] == 'M'))
 		    {
+		    if (n_attr == 0)
+			{
+			core_com.atr_buf[0] = rx_val;
+			}
+		    else
+			{
+			core_com.n_atr = n_attr;
+			}
 		    core_com.n_com = rx_val;
 		    static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		    xQueueSendFromISR(Core.queue, &core_com,
 			    &xHigherPriorityTaskWoken);
 		    break;
 		    }
+		else if ((data[local_l] == 'h') || (data[local_l] == 'H'))
+		    {
+		    Uart_send_isr("Help:\n ", sizeof("Help:\n "));
+		    Uart_send_isr("command X stepper_pos !\n ",
+			    sizeof("ommand X stepper_pos !\n "));
+		    Uart_send_isr("command Y servo_pos !\n ",
+			    sizeof("ommand Y servo_pos !\n "));
+		    Uart_send_isr("command M0 = stepper_pos; servo_pos !\n ",
+			    sizeof("command M0 = stepper_pos; servo_pos !\n "));
+		    Uart_send_isr(
+			    "command M1 = servo_pos; stepper_pos; servo_pos !\n ",
+			    sizeof("command M1 = servo_pos; stepper_pos; servo_pos !\n "));
+		    Uart_send_isr("command M2 = N_sim !\n ",
+			    sizeof("command M2 = N_sim !\n "));
+		    break;
+		    }
 		}
+	    n_attr = 0;
 	    rx_val = 0;
 	    order = 1;
 	    local_end = l;

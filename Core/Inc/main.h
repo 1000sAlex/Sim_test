@@ -51,6 +51,8 @@ typedef int32_t s32;
 /* USER CODE BEGIN ET */
 #define F_CPU 72000000
 #define DEBUG_STR 1
+#define COM_FROM_ISR 0
+#define COM_FROM_CORE 1
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

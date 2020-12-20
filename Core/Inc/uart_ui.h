@@ -14,7 +14,7 @@
 typedef struct uart_tx_data_struct
     {
 	uint8_t len;
-	uint8_t buf[32];
+	uint8_t buf[64];
     } Uart_tx_data_str;
 
 typedef struct uart_tx_struct

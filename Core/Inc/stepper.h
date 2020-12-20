@@ -11,9 +11,11 @@
 #include "main.h"
 #include "FreeRTOS.h"
 
+#define STEPPER_STEPS_PER_SIM 100
 typedef struct pos_struct
     {
 	u32 need_pos;
+	u8 source;
     } Stepper_pos_str;
 
 typedef struct stepper_speeed_struct

@@ -24,6 +24,7 @@ typedef struct core_struct
 	SemaphoreHandle_t semaphore;
 	QueueHandle_t queue;
 	core_com_str com;
+	TaskHandle_t core_Handle;
     } core_str;
 
 void core_init(void);

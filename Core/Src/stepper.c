@@ -67,6 +67,10 @@ void Stepper_task(void *args)
 		{
 		Debug_str_servo_start();
 		xSemaphoreGive(stp->semaphore);
+		if (stp->pos.source == COM_FROM_CORE)
+		    {
+		    vTaskResume(Core.core_Handle);
+		    }
 		}
 	    while (uxSemaphoreGetCount(stp->semaphore) == 0)
 		{
@@ -190,6 +194,10 @@ void Stepper_tim_interrupt_handler(TIM_HandleTypeDef *htim, Step_motor_str *stp)
 	    static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 	    Debug_str_servo_ready();
 	    xSemaphoreGiveFromISR(stp->semaphore, &xHigherPriorityTaskWoken);
+	    if (stp->pos.source == COM_FROM_CORE)
+		{
+		xTaskResumeFromISR(Core.core_Handle);
+		}
 	    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	    }
 	else
