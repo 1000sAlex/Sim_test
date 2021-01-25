@@ -14,14 +14,9 @@
 #include "core.h"
 #include "string.h"
 
-static Stepper_pos_str stepper_pos;
 extern Step_motor_str Stepper;
-
 extern Servo_str Servo;
-static Servo_pos_str servo_pos;
-
 extern core_str Core;
-static core_com_str core_com;
 
 u8 uart_rx_buf[128];
 u16 rx_count = 0;
@@ -105,6 +100,9 @@ void uart_pars(u8 *data, u16 len)
     u16 local_l = 0;
     u16 local_end = 0;
     u8 n_attr = 0;
+    core_com_str core_com;
+    Stepper_pos_str stepper_pos;
+    Servo_pos_str servo_pos;
     while (l < len) //идем до конца принятого буфера
 	{
 	if (data[l] == '!') //идем вправо до '!'
@@ -147,6 +145,7 @@ void uart_pars(u8 *data, u16 len)
 		    if (n_attr == 0)
 			{
 			core_com.atr_buf[0] = rx_val;
+			core_com.n_atr = 0;
 			}
 		    else
 			{
@@ -165,13 +164,14 @@ void uart_pars(u8 *data, u16 len)
 			    sizeof("ommand X stepper_pos !\n "));
 		    Uart_send_isr("command Y servo_pos !\n ",
 			    sizeof("ommand Y servo_pos !\n "));
-		    Uart_send_isr("command M0 = stepper_pos; servo_pos !\n ",
-			    sizeof("command M0 = stepper_pos; servo_pos !\n "));
+		    Uart_send_isr("command M0!\n ", sizeof("command M0!\n "));
+		    Uart_send_isr("command M1 = stepper_pos; servo_pos !\n ",
+			    sizeof("command M1 = stepper_pos; servo_pos !\n "));
 		    Uart_send_isr(
-			    "command M1 = servo_pos; stepper_pos; servo_pos !\n ",
-			    sizeof("command M1 = servo_pos; stepper_pos; servo_pos !\n "));
-		    Uart_send_isr("command M2 = N_sim !\n ",
-			    sizeof("command M2 = N_sim !\n "));
+			    "command M2 = servo_pos; stepper_pos; servo_pos !\n ",
+			    sizeof("command M2 = servo_pos; stepper_pos; servo_pos !\n "));
+		    Uart_send_isr("command M3 = N_sim !\n ",
+			    sizeof("command M3 = N_sim !\n "));
 		    break;
 		    }
 		}
@@ -185,7 +185,7 @@ void uart_pars(u8 *data, u16 len)
     rx_count = 0;
     }
 
-void HAL_UART_Rx_int(UART_HandleTypeDef *huart)
+void HAL_UART1_Rx_int(UART_HandleTypeDef *huart)
     {
     if (huart->Instance == USART1)
 	{

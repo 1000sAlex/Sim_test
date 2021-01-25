@@ -28,10 +28,12 @@ void Servo_init(void)
     xTaskCreate(Servo_task, "servo", configMINIMAL_STACK_SIZE, &Servo,
 	    osPriorityHigh, NULL);
     Servo.steps_per_second = 180 * SERVO_DEG_TO_RESOLUTION;
+    STEPPER_EN_GPIO_Port->ODR |= STEPPER_EN_Pin; //выключаем шаговик, чтобы не дернулся
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
     htim4.Instance->CCR1 = servo_deg_to_tim(0, SERVO_INVERT);
     HAL_Delay(1000);
     HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+    STEPPER_EN_GPIO_Port->ODR &= ~ STEPPER_EN_Pin;
     }
 
 void Servo_task(void *args)
@@ -111,7 +113,6 @@ void Servo_work(Servo_str *serv)
     if (serv->real_pos == serv->pos.need_pos)
 	{
 	xSemaphoreGive(serv->semaphore);
-	HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
 #if DEBUG_STR
 	Uart_send_val("SERV_READY pos = ", sizeof("SERV_READY pos = "),
 		serv->real_pos / 10);
@@ -122,6 +123,8 @@ void Servo_work(Servo_str *serv)
 	    {
 	    vTaskResume(Core.core_Handle);
 	    }
+	vTaskDelay(500);
+	HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
 	}
     }
 

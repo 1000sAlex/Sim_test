@@ -29,16 +29,46 @@
 #include "stepper.h"
 #include "servo.h"
 #include "uart_ui.h"
+#include "sim800.h"
 #include "core.h"
+#include "atc.h"
+#include "gsm.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+atc_t atc;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#include <stdio.h>
+
+#define ITM_Port8(n)    (*((volatile unsigned char *)(0xE0000000+4*n)))
+#define ITM_Port16(n)   (*((volatile unsigned short*)(0xE0000000+4*n)))
+#define ITM_Port32(n)   (*((volatile unsigned long *)(0xE0000000+4*n)))
+
+#define DEMCR           (*((volatile unsigned long *)(0xE000EDFC)))
+#define TRCENA          0x01000000
+
+struct __FILE
+    {
+	int handle; /* Add whatever you need here */
+    };
+FILE __stdout;
+FILE __stdin;
+
+int fputc(int ch, FILE *f)
+    {
+    if (DEMCR & TRCENA)
+	{
+	while (ITM_Port32(0) == 0)
+	    ;
+	ITM_Port8(0) = ch;
+	}
+    return (ch);
+    }
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -105,6 +135,8 @@ int main(void)
     Servo_init();
     Stepper_init();
     uart_ui_init();
+    uart_sim_init();
+    gsm_printf("1");
     /* USER CODE END 2 */
 
     /* Call init function for freertos objects (in freertos.c) */

@@ -20,13 +20,14 @@ void Stepper_acceleration_calc(Step_motor_str *stp);
 void Stepper_acceleration_work(Step_motor_str *stp);
 void Debug_str_servo_start(void);
 void Debug_str_servo_ready(void);
+
 extern TIM_HandleTypeDef htim2;
 
 void Stepper_init(void)
     {
-    Stepper.speed.jerk = 150;
-    Stepper.speed.acceler = 20000;
-    Stepper.speed.max_speed = 10000;
+    Stepper.pos.jerk = 150;
+    Stepper.pos.acceler = 20000;
+    Stepper.pos.max_speed = 10000;
 
     Stepper.semaphore = xSemaphoreCreateBinary();
     Stepper.queue = xQueueCreate(16, sizeof(Stepper_pos_str));
@@ -36,7 +37,7 @@ void Stepper_init(void)
     STEPPER_MS1_GPIO_Port->ODR |= STEPPER_MS1_Pin;
     STEPPER_MS2_GPIO_Port->ODR |= STEPPER_MS2_Pin;
     STEPPER_EN_GPIO_Port->ODR &= ~ STEPPER_EN_Pin;
-    //STEPPER_EN_GPIO_Port->ODR |=  STEPPER_EN_Pin;
+//    STEPPER_EN_GPIO_Port->ODR |=  STEPPER_EN_Pin;
     }
 
 void Stepper_task(void *args)
@@ -49,6 +50,23 @@ void Stepper_task(void *args)
 	if ( xSemaphoreTake(stp->semaphore, portMAX_DELAY ) == pdTRUE)
 	    {
 	    xQueueReceive(stp->queue, &stp->pos, portMAX_DELAY);
+	    if (stp->pos.com != STEPPER_COM_ZERO)
+		{
+		Stepper.pos.jerk = 150;
+		Stepper.pos.acceler = 20000;
+		Stepper.pos.max_speed = 10000;
+		}
+	    else
+		{
+		stp->real_pos = 0xAFFFFFFF;
+		stp->pos.need_pos = 0;
+		}
+//	    if (stp->pos.com == STEPPER_COM_ZERO)
+//		{
+//		Go_zero(stp);
+//		}
+//	    else
+//		{
 	    if (stp->pos.need_pos < stp->real_pos) //если положение левее чем надо
 		{
 		Debug_str_servo_start();
@@ -56,7 +74,7 @@ void Stepper_task(void *args)
 		make_step(stp->real_pos - stp->pos.need_pos,
 		STEPPER_LEFT, stp);
 		}
-	    else if (stp->pos.need_pos > stp->real_pos) //если положение левее чем надо
+	    else if (stp->pos.need_pos > stp->real_pos) //если положение правее чем надо
 		{
 		Debug_str_servo_start();
 		Stepper_acceleration_calc(stp);
@@ -75,11 +93,51 @@ void Stepper_task(void *args)
 	    while (uxSemaphoreGetCount(stp->semaphore) == 0)
 		{
 		Stepper_acceleration_work(stp);
+		vTaskDelay(10);
 		}
-
 	    }
+//	    }
 	}
     }
+
+//void Go_zero(Step_motor_str *stp)
+//    {
+//    stp->speed.jerk = 150;
+//    stp->speed.acceler = 20000;
+//    stp->speed.max_speed = 10000;
+//    Stepper_acceleration_calc(stp);
+//    make_step(0xFFFFFFFF, STEPPER_LEFT, stp);
+//    while (uxSemaphoreGetCount(stp->semaphore) == 0)
+//	{
+//	Stepper_acceleration_work(stp);
+//	vTaskDelay(10);
+//	}
+//    xSemaphoreTake(stp->semaphore, portMAX_DELAY);
+//    vTaskDelay(500);
+//    Stepper_acceleration_calc(stp);
+//    stp->pos.need_pos = 500;
+//    make_step(stp->pos.need_pos,STEPPER_RIGHT, stp);
+//    while (uxSemaphoreGetCount(stp->semaphore) == 0)
+//	{
+//	Stepper_acceleration_work(stp);
+//	vTaskDelay(10);
+//	}
+//    xSemaphoreTake(stp->semaphore, portMAX_DELAY);
+//    vTaskDelay(500);
+//    stp->speed.jerk = 150;
+//    stp->speed.acceler = 0;
+//    stp->speed.max_speed = 200;
+//    Stepper_acceleration_calc(stp);
+//    make_step(1000, STEPPER_LEFT, stp);
+//    while (uxSemaphoreGetCount(stp->semaphore) == 0)
+//	{
+//	Stepper_acceleration_work(stp);
+//	vTaskDelay(10);
+//	}
+//    stp->speed.jerk = 150;
+//    stp->speed.acceler = 20000;
+//    stp->speed.max_speed = 10000;
+//    }
 
 /*         2    2
  *     ( Vk - V0 )
@@ -88,7 +146,14 @@ void Stepper_task(void *args)
  */
 u32 accel_s_calc(u32 vk, u32 v0, u32 a)
     {
-    return ((vk * vk) - (v0 * v0)) / (a * 2);
+    if (a != 0)
+	{
+	return ((vk * vk) - (v0 * v0)) / (a * 2);
+	}
+    else
+	{
+	return 0;
+	}
     }
 
 u32 calc_devider(u32 speed)
@@ -102,16 +167,16 @@ volatile u32 steps_per_second = 0;
 void Stepper_acceleration_calc(Step_motor_str *stp)
     {
     //запоминание рывка
-    stp->speed.tim_devider_jerk = calc_devider(stp->speed.jerk);
+    stp->speed.tim_devider_jerk = calc_devider(stp->pos.jerk);
     //рассчет минимального делителя таймера
-    stp->speed.tim_devider_min_devider = calc_devider(stp->speed.max_speed);
+    stp->speed.tim_devider_min_devider = calc_devider(stp->pos.max_speed);
     //рассчет пути на котором будем ускоряться
-    stp->speed.s_accel = accel_s_calc(stp->speed.max_speed, stp->speed.jerk,
-	    stp->speed.acceler);
+    stp->speed.s_accel = accel_s_calc(stp->pos.max_speed, stp->pos.jerk,
+	    stp->pos.acceler);
     //передаем в таймер значение рывка
     htim2.Instance->PSC = stp->speed.tim_devider_jerk;
     devider = htim2.Instance->PSC;
-    steps_per_second = stp->speed.jerk;
+    steps_per_second = stp->pos.jerk;
     }
 
 u32 delta(u32 a, u32 b)
@@ -128,14 +193,12 @@ u32 delta(u32 a, u32 b)
 
 void Stepper_acceleration_work(Step_motor_str *stp)
     {
-    if (stp->steps_left > (delta(stp->real_pos, stp->pos.need_pos) / 2))
+    if (stp->steps_left > (delta(stp->real_pos, stp->pos.need_pos) / 2)) //если еще можем разгоняться
 	{
-//	if (stp->steps_left < stp->speed.s_accel)   //если еще можем разгоняться
-//	    {
 	//разгон
 	if (htim2.Instance->PSC > stp->speed.tim_devider_min_devider)
 	    {
-	    steps_per_second = (steps_per_second * 100 + stp->speed.acceler)
+	    steps_per_second = (steps_per_second * 100 + stp->pos.acceler)
 		    / 100;
 	    htim2.Instance->PSC = calc_devider(steps_per_second);
 	    devider = htim2.Instance->PSC;
@@ -144,7 +207,6 @@ void Stepper_acceleration_work(Step_motor_str *stp)
 		htim2.Instance->PSC = stp->speed.tim_devider_min_devider;
 		}
 	    }
-//	    }
 	}
     else    //если тормозим
 	{
@@ -153,13 +215,12 @@ void Stepper_acceleration_work(Step_motor_str *stp)
 	    //торможение
 	    if (htim2.Instance->PSC < stp->speed.tim_devider_jerk)
 		{
-		steps_per_second = (steps_per_second * 100 - stp->speed.acceler)
+		steps_per_second = (steps_per_second * 100 - stp->pos.acceler)
 			/ 100;
 		htim2.Instance->PSC = calc_devider(steps_per_second);
 		}
 	    }
 	}
-    vTaskDelay(10);
     }
 
 void make_step(u32 steps, u8 dir, Step_motor_str *stp)
@@ -174,6 +235,7 @@ void make_step(u32 steps, u8 dir, Step_motor_str *stp)
 	STEPPER_DIR_GPIO_Port->ODR &= ~ STEPPER_DIR_Pin;
 	//stp->real_pos = stp->real_pos + steps;
 	}
+    stp->steps_dir = dir;
     stp->steps_left = steps;
     HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_2);
     }
@@ -187,6 +249,19 @@ void Stepper_tim_interrupt_handler(TIM_HandleTypeDef *htim, Step_motor_str *stp)
     {
     if (htim->Instance == TIM2)
 	{
+
+	if ((LIMIT_SW_GPIO_Port->IDR & LIMIT_SW_Pin) == 0)
+	    {
+	    if (stp->steps_dir == STEPPER_LEFT)
+		{
+		if (stp->pos.com == STEPPER_COM_ZERO)
+		    {
+		    stp->real_pos = 0;
+		    stp->pos.need_pos = 0;
+		    stp->steps_left = 0;
+		    }
+		}
+	    }
 	if (stp->steps_left == 0)
 	    {
 	    HAL_TIM_PWM_Stop_IT(&htim2, TIM_CHANNEL_2);

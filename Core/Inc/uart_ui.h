@@ -25,7 +25,7 @@ typedef struct uart_tx_struct
     } Uart_tx_str;
 
 void uart_ui_init(void);
-void HAL_UART_Rx_int(UART_HandleTypeDef *huart);
+void HAL_UART1_Rx_int(UART_HandleTypeDef *huart);
 void Uart_send(char buf[], uint8_t len);
 void Uart_send_val(char buf[], uint8_t len, int32_t val);
 void Uart_send_isr(char buf[], uint8_t len);

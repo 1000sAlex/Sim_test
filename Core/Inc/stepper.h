@@ -11,18 +11,20 @@
 #include "main.h"
 #include "FreeRTOS.h"
 
+#define STEPPER_COM_ZERO 1
 #define STEPPER_STEPS_PER_SIM 100
 typedef struct pos_struct
     {
 	u32 need_pos;
 	u8 source;
+	u8 com;
+	u32 max_speed;
+	u32 acceler;
+	u32 jerk;
     } Stepper_pos_str;
 
 typedef struct stepper_speeed_struct
     {
-	u32 max_speed;
-	u32 acceler;
-	u32 jerk;
 	u32 tim_devider;
 	u32 tim_devider_step;
 	u32 tim_devider_jerk;
@@ -39,6 +41,7 @@ typedef struct stepper_struct
 	SemaphoreHandle_t semaphore;
 	QueueHandle_t queue;
 	u32 real_pos; //нынешнее положение
+	u8 steps_dir;//направление вращения
 	u32 steps_left; //шагов осталось до цели
 	Stepper_pos_str pos; //необходимое положение
 	stepper_speeed_str speed;

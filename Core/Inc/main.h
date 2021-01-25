@@ -29,6 +29,17 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_usart.h"
+#include "stm32f1xx_ll_rcc.h"
+#include "stm32f1xx_ll_bus.h"
+#include "stm32f1xx_ll_system.h"
+#include "stm32f1xx_ll_exti.h"
+#include "stm32f1xx_ll_cortex.h"
+#include "stm32f1xx_ll_utils.h"
+#include "stm32f1xx_ll_pwr.h"
+#include "stm32f1xx_ll_dma.h"
+#include "stm32f1xx.h"
+#include "stm32f1xx_ll_gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -83,6 +94,10 @@ void Error_Handler(void);
 #define STEPPER_MS2_GPIO_Port GPIOA
 #define STEPPER_EN_Pin GPIO_PIN_5
 #define STEPPER_EN_GPIO_Port GPIOA
+#define GSM_en_Pin GPIO_PIN_12
+#define GSM_en_GPIO_Port GPIOB
+#define LIMIT_SW_Pin GPIO_PIN_4
+#define LIMIT_SW_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
